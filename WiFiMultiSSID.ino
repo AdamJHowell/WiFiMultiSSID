@@ -39,6 +39,7 @@ PubSubClient mqttClient( espClient );
 
 
 // The IRAM_ATTR causes the function to operate from RAM, which is faster.
+// Never use delay() in an ISR.
 void IRAM_ATTR takePicture()
 {
 	Serial.println( "\n\n\nThe takePicture() function is only stub!" );
@@ -95,7 +96,7 @@ void setup()
 } // End of setup() function.
 
 
-void	 wifiMultiConnect()
+void wifiMultiConnect()
 {
 	Serial.println( "\nEntering wifiMultiConnect()" );
 	for( size_t i = 0; i < 3; i++ )
@@ -105,7 +106,7 @@ void	 wifiMultiConnect()
 		const char* wifiPassword = wifiSsidPassArray[i];
 
 		// Announce the WiFi parameters for this connection attempt.
-		Serial.print( "WiFi connecting to SSID \"" );
+		Serial.print( "Attempting to connecto to SSID \"" );
 		Serial.print( wifiSsid );
 		Serial.println( "\"" );
 
@@ -113,6 +114,12 @@ void	 wifiMultiConnect()
 		Serial.printf( "Wi-Fi mode set to WIFI_STA %s\n", WiFi.mode( WIFI_STA ) ? "" : "Failed!" );
 		WiFi.begin( wifiSsid, wifiPassword );
 
+		unsigned long wifiConnectionTimeout = 10000;
+		unsigned long wifiConnectionStartTime = millis();
+		// Wait up to 10 seconds for a connection.
+		Serial.print( "Waiting up to " );
+		Serial.print( wifiConnectionTimeout / 1000 );
+		Serial.print( " seconds for a connection.\n" );
 		/*
 			WiFi.status() return values:
 			0 : WL_IDLE_STATUS when WiFi is in process of changing between statuses
@@ -121,10 +128,7 @@ void	 wifiMultiConnect()
 			4 : WL_CONNECT_FAILED if wifiPassword is incorrect
 			6 : WL_DISCONNECTED if module is not configured in station mode
 		*/
-		unsigned long wifiConnectionTimeout = 10000;
-		unsigned long wifiConnectionStartTime = millis();
-		// Wait up to 10 seconds for a connection.
-		while( WiFi.status() != WL_CONNECTED || millis() - wifiConnectionStartTime < wifiConnectionTimeout )
+		while( WiFi.status() != WL_CONNECTED && ( millis() - wifiConnectionStartTime < wifiConnectionTimeout ) )
 		{
 			Serial.print( "." );
 			delay( 1000 );
@@ -206,6 +210,8 @@ void mqttConnect( int maxAttempts )
 
 void loop()
 {
+	// heaps_caps_check_integrity_all();
+
 	unsigned long time = millis();
 	// When time is less than publishDelay, subtracting publishDelay from time causes an overlow which results in a very large number.
 	if( lastPublish == 0 || ( ( time > publishDelay ) && ( time - publishDelay ) > lastPublish ) )
